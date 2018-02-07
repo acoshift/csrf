@@ -10,7 +10,7 @@ import (
 
 // Config is the csrf config
 type Config struct {
-	Origin           []string
+	Origins          []string
 	ForbiddenHandler http.Handler
 }
 
@@ -25,7 +25,7 @@ func New(config Config) middleware.Middleware {
 	checkOrigin := func(r *http.Request) bool {
 		origin := r.Header.Get(header.Origin)
 		if origin != "" {
-			for _, allow := range config.Origin {
+			for _, allow := range config.Origins {
 				if origin == allow {
 					return true
 				}
@@ -38,7 +38,7 @@ func New(config Config) middleware.Middleware {
 	checkReferer := func(r *http.Request) bool {
 		referer := r.Referer()
 		if referer != "" {
-			for _, allow := range config.Origin {
+			for _, allow := range config.Origins {
 				if strings.HasPrefix(referer, allow+"/") {
 					return true
 				}
