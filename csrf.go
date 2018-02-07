@@ -50,12 +50,10 @@ func New(config Config) middleware.Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
-				if checkOrigin(r) || checkReferer(r) {
-					h.ServeHTTP(w, r)
+				if !checkOrigin(r) && !checkReferer(r) {
+					config.ForbiddenHandler.ServeHTTP(w, r)
 					return
 				}
-				config.ForbiddenHandler.ServeHTTP(w, r)
-				return
 			}
 			h.ServeHTTP(w, r)
 		})
