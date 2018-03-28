@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Origins          []string
 	ForbiddenHandler http.Handler
+	IgnoreProto      bool
 }
 
 // New creates new csrf middleware
@@ -22,10 +23,25 @@ func New(config Config) middleware.Middleware {
 		})
 	}
 
+	origins := make([]string, len(config.Origins))
+	copy(origins, config.Origins)
+	if config.IgnoreProto {
+		for i := range origins {
+			origins[i] = removeProto(origins[i])
+		}
+	}
+
 	checkOrigin := func(r *http.Request) bool {
 		origin := r.Header.Get(header.Origin)
 		if origin != "" {
-			for _, allow := range config.Origins {
+			if config.IgnoreProto {
+				l := len(origin)
+				origin = removeProto(origin)
+				if l == len(origin) {
+					return false
+				}
+			}
+			for _, allow := range origins {
 				if origin == allow {
 					return true
 				}
@@ -38,7 +54,14 @@ func New(config Config) middleware.Middleware {
 	checkReferer := func(r *http.Request) bool {
 		referer := r.Referer()
 		if referer != "" {
-			for _, allow := range config.Origins {
+			if config.IgnoreProto {
+				l := len(referer)
+				referer = removeProto(referer)
+				if l == len(referer) {
+					return false
+				}
+			}
+			for _, allow := range origins {
 				if strings.HasPrefix(referer, allow+"/") {
 					return true
 				}
@@ -58,4 +81,12 @@ func New(config Config) middleware.Middleware {
 			h.ServeHTTP(w, r)
 		})
 	}
+}
+
+func removeProto(s string) string {
+	prefix := strings.Index(s, "://")
+	if prefix >= 0 {
+		return s[prefix+3:]
+	}
+	return s
 }
