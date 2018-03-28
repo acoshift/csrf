@@ -23,23 +23,26 @@ func New(config Config) middleware.Middleware {
 		})
 	}
 
+	normalize := func(s string) (string, bool) {
+		return s, true
+	}
+
 	origins := make([]string, len(config.Origins))
 	copy(origins, config.Origins)
 	if config.IgnoreProto {
 		for i := range origins {
-			origins[i] = removeProto(origins[i])
+			origins[i], _ = removeProto(origins[i])
 		}
+
+		normalize = removeProto
 	}
 
 	checkOrigin := func(r *http.Request) bool {
 		origin := r.Header.Get(header.Origin)
 		if origin != "" {
-			if config.IgnoreProto {
-				l := len(origin)
-				origin = removeProto(origin)
-				if l == len(origin) {
-					return false
-				}
+			origin, b := normalize(origin)
+			if !b {
+				return false
 			}
 			for _, allow := range origins {
 				if origin == allow {
@@ -54,12 +57,9 @@ func New(config Config) middleware.Middleware {
 	checkReferer := func(r *http.Request) bool {
 		referer := r.Referer()
 		if referer != "" {
-			if config.IgnoreProto {
-				l := len(referer)
-				referer = removeProto(referer)
-				if l == len(referer) {
-					return false
-				}
+			referer, b := normalize(referer)
+			if !b {
+				return false
 			}
 			for _, allow := range origins {
 				if strings.HasPrefix(referer, allow+"/") {
@@ -83,10 +83,10 @@ func New(config Config) middleware.Middleware {
 	}
 }
 
-func removeProto(s string) string {
+func removeProto(s string) (string, bool) {
 	prefix := strings.Index(s, "://")
 	if prefix >= 0 {
-		return s[prefix+3:]
+		return s[prefix+3:], true
 	}
-	return s
+	return s, false
 }
